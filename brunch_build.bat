@@ -1,0 +1,3 @@
+brunch build -p
+
+pause
