@@ -1,17 +1,15 @@
+var jsFiles = {'vendor.js': /^vendor\/[a-zA-Z0-9_\-\/]*\.js/};
+var cssFiles = {'vendor.css': /^vendor\/[a-zA-Z0-9_\-\/]*\.css/};
+
 var trace = console.log.bind(console);
+var isProduction = process.argv.indexOf("-p")>-1 ? 1 : 0;
 var multiout = require("./tools/multiout/multiout.js").multiout;
-var test = multiout.populateSeperateOutputs(/^app\/en/, ".js");
-trace("PIERRE: " + test);
-
-var jsFiles = {
-  'app.js': /^app\/[a-zA-Z0-9_\-\/]*\.js/,
-  'vendor.js': /^vendor\/[a-zA-Z0-9_\-\/]*\.js/
-};
-var cssFiles = {
-  'app.css': /^app\/[a-zA-Z0-9_\-\/]*\.(css|less)/,
-  'vendor.css': /^vendor\/[a-zA-Z0-9_\-\/]*\.css/
-};
-
+multiout.isDebug = false; !isProduction;
+multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".js", jsFiles, ['app/initialize.js']);
+multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".css", cssFiles, ['app/reset.css']);
+multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".less:.css", cssFiles);
+multiout.isDebug && trace("jsFiles: " + JSON.stringify(jsFiles, null, ' '));
+multiout.isDebug && trace("cssFiles: " + JSON.stringify(cssFiles, null, ' '));
 
 module.exports = {
   // See http://brunch.io for documentation.
@@ -23,8 +21,8 @@ module.exports = {
   optimize: true,
   sourceMaps: false,
   plugins: {
-    beforeBrunch: ["node multiout-config.js before"],
-    afterBrunch: ["node multiout-config.js after"],
+    beforeBrunch: ["node multiout-config.js before " + isProduction],
+    afterBrunch: ["node multiout-config.js after " + isProduction],
     //afterBrunch: ["haxe -cp %BIGPHAXE% --macro bigp.macros.BuildTasks.after('tasks.json')"],
     less: {
       enabled: true
