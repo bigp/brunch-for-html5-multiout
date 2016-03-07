@@ -23,8 +23,8 @@ module.exports = {
   optimize: true,
   sourceMaps: false,
   plugins: {
-    beforeBrunch: ["node brunch-multiout-files.js before"],
-    afterBrunch: ["node brunch-multiout-files.js after"],
+    beforeBrunch: ["node multiout-config.js before"],
+    afterBrunch: ["node multiout-config.js after"],
     //afterBrunch: ["haxe -cp %BIGPHAXE% --macro bigp.macros.BuildTasks.after('tasks.json')"],
     less: {
       enabled: true
