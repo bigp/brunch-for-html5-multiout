@@ -31,8 +31,8 @@ module.exports = {
       enabled: true
     },
     autoReload: {
-      enabled: true,
-      delay: 150,
+      enabled: true
+      //delay: 350
     },
     uglify: {
       mangle: true,
