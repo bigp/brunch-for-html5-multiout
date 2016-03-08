@@ -8,8 +8,11 @@ multiout.isDebug = false; !isProduction;
 multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".js", jsFiles, ['app/initialize.js']);
 multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".css", cssFiles, ['app/reset.css']);
 multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".less:.css", cssFiles);
-multiout.isDebug && trace("jsFiles: " + JSON.stringify(jsFiles, null, ' '));
-multiout.isDebug && trace("cssFiles: " + JSON.stringify(cssFiles, null, ' '));
+if(false) {
+  trace("jsFiles: " + JSON.stringify(jsFiles, null, ' '));
+  trace("----");
+  trace("cssFiles: " + JSON.stringify(cssFiles, null, ' '));
+}
 
 module.exports = {
   // See http://brunch.io for documentation.
@@ -18,7 +21,7 @@ module.exports = {
     definition: false
   },
 
-  optimize: true,
+  //optimize: true,
   sourceMaps: false,
   plugins: {
     beforeBrunch: ["node multiout-config.js before " + isProduction],
@@ -28,7 +31,8 @@ module.exports = {
       enabled: true
     },
     autoReload: {
-      enabled: true
+      enabled: true,
+      delay: 150,
     },
     uglify: {
       mangle: true,
