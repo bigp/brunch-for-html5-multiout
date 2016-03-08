@@ -1,8 +1,14 @@
 var d = document, w = window, defaults, ad, isDebug = false;
-var log = function log(msg) {
-    console.log(msg);
-};
-var trace = log;
+var trace = console.log.bind(console);
+var log = console.log.bind(console);
+function isArray(o) {
+    return (o instanceof Array) || o.hasOwnProperty('length');
+}
+function rem(arr, o) {
+    var i = arr.indexOf(o);
+    if (i > -1)
+        arr.splice(i, 1);
+}
 function id(n) {
     var found;
     if (n.indexOf(" ") > -1) {
@@ -24,45 +30,38 @@ function id(n) {
         found = d.getElementById(n);
     }
     if (!found)
-        log("ERROR: Cannot find element by id: " + n);
-    //else log("Found id: " + n);
+        trace("ERROR: Cannot find element by id: " + n);
+    //else trace("Found id: " + n);
     return found;
 }
-function isArray(o) {
-    return (o instanceof Array) || o.hasOwnProperty('length');
-}
-function rem(arr, o) {
-    var i = arr.indexOf(o);
-    if (i > -1)
-        arr.splice(i, 1);
-}
-var getQueryVariable;
-(function (w) {
-    var query = window.location.search.substring(1);
+var getQueryVariable = (function () {
+    var query = w.location.search.substring(1);
     var vars = query.split('&');
     var queryObj = {};
     for (var i = 0; i < vars.length; i++) {
         var kv = vars[i].split('=');
         queryObj[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
     }
-    getQueryVariable = function _getQueryVariable(variable) {
+    return function _getQueryVariable(variable) {
         if (queryObj.hasOwnProperty(variable)) {
             return queryObj[variable];
         }
-        console.log('Query variable %s not found', variable);
+        trace('info: Query variable \"%s\" not found', variable);
         return null;
     };
-})(window);
+})();
 (function () {
-    w.onload = function () {
-        _preload();
-    };
     var clickTagHandler;
-    function _callMain() {
+    w.onload = _preload;
+    function _preload() {
+        if (w.location.hostname == "localhost" && w.location.port == "3333") {
+            trace(w.document.title = "*LOCAL* " + w.document.title);
+        }
         if (getQueryVariable('debug')) {
+            var b = d.body;
             isDebug = true;
-            document.body.classList.add('debug');
-            document.body.addEventListener("keydown", function (e) {
+            b.classList.add('debug');
+            b.addEventListener("keydown", function (e) {
                 switch (e.keyCode) {
                     case 13:
                         ad.onEnter && ad.onEnter();
@@ -70,9 +69,28 @@ var getQueryVariable;
                 }
             });
         }
-        if (window['atlasURL'] != null) {
+        //Check if DoubleClick Enabler is missing:
+        if (isDebug || !w['Enabler'] || !w['studio']) {
+            trace("**DoubleClick Enabler not loaded!**");
+            _callMain();
+        }
+        else {
+            var SE = studio.events.StudioEvent;
+            function Enabler_init() {
+                // Polite loading
+                Enabler.isVisible() ? _callMain() : Enabler.addEventListener(SE.VISIBLE, _callMain);
+                clickTagHandler = function Enabler_clickTag() { Enabler.exit('Background Exit'); };
+            }
+            // If true, start function. If false, listen for INIT.
+            Enabler.isInitialized() ? Enabler_init() : Enabler.addEventListener(SE.INIT, Enabler_init);
+        }
+    }
+    function _callMain() {
+        if (w['atlasURL'] != null) {
+            trace("Preloading atlasURL '%s' ...", atlasURL);
             var img = new Image();
             img.addEventListener("load", function () {
+                trace("Downloaded atlasURL '%s'.", atlasURL);
                 isDebug ? setTimeout(_prepareAd, 250) : _prepareAd();
             });
             img.src = atlasURL;
@@ -105,36 +123,6 @@ var getQueryVariable;
         defaults.timeline.call(function () {
             ad.onEnd && ad.onEnd();
         });
-    }
-    function _preload() {
-        if (w.location.hostname == "localhost" && w.location.port == "3333") {
-            trace(w.document.title = "*LOCAL* " + w.document.title);
-        }
-        //If Enabler is missing:
-        if (!w['Enabler'] || !w['studio']) {
-            log("**Could not load DoubleClick Enabler!**");
-            _callMain();
-        }
-        else {
-            clickTagHandler = function Enabler_clickTag() {
-                Enabler.exit('Background Exit');
-            };
-            function Enabler_init() {
-                // Polite loading
-                if (Enabler.isVisible())
-                    Enabler_visible();
-                else
-                    Enabler.addEventListener(studio.events.StudioEvent.VISIBLE, Enabler_visible);
-            }
-            function Enabler_visible() {
-                _callMain();
-            }
-            // If true, start function. If false, listen for INIT.
-            if (Enabler.isInitialized())
-                Enabler_init();
-            else
-                Enabler.addEventListener(studio.events.StudioEvent.INIT, Enabler_init);
-        }
     }
 })();
 function makeDiv(classes, attachTo) {
@@ -181,18 +169,16 @@ function show() {
     for (var _i = 0; _i < arguments.length; _i++) {
         rest[_i - 0] = arguments[_i];
     }
-    for (var r = rest.length; --r >= 0;) {
+    for (var r = rest.length; --r >= 0;)
         defaults.timeline.set(rest[r], { alpha: 1 });
-    }
 }
 function hide() {
     var rest = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         rest[_i - 0] = arguments[_i];
     }
-    for (var r = rest.length; --r >= 0;) {
+    for (var r = rest.length; --r >= 0;)
         defaults.timeline.set(rest[r], { alpha: 0 });
-    }
 }
 function wait(time) {
     defaults.timeline.set({}, {}, "+=" + time);
@@ -201,13 +187,13 @@ function pauseHere() {
     var t = defaults.timeline;
     t.call(t.pause.bind(t));
 }
-var tempArray = [];
+var singleArr = [];
 function fadeIn(time, rest, offset) {
     if (offset === void 0) { offset = null; }
     var current = typeof (offset) == "string" ? offset : defaults.timeline.totalDuration() + (offset == null ? 0 : offset);
     if (!isArray(rest)) {
-        tempArray[0] = rest;
-        rest = tempArray;
+        singleArr[0] = rest;
+        rest = singleArr;
     }
     for (var r = rest.length; --r >= 0;) {
         defaults.timeline.to(rest[r], time, { alpha: 1 }, current);
@@ -217,8 +203,8 @@ function fadeOut(time, rest, offset) {
     if (offset === void 0) { offset = null; }
     var current = defaults.timeline.totalDuration() + (offset == null ? 0 : offset);
     if (!isArray(rest)) {
-        tempArray[0] = rest;
-        rest = tempArray;
+        singleArr[0] = rest;
+        rest = singleArr;
     }
     for (var r = rest.length; --r >= 0;) {
         defaults.timeline.to(rest[r], time, { alpha: 0 }, current);

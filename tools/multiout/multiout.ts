@@ -2,9 +2,16 @@ declare var module;
 declare var process;
 const trace = console.log.bind(console);
 const fs = require('fs');
-const cmdParam = process.argv[2];
 const spawn = require('child_process').spawnSync;
 const UTF_8 = {encoding: "utf-8"};
+const cmdParam = process.argv[2];
+const debugParam = process.argv[3]=="0";
+
+var _infoEnabled = false;
+function info(... args) {
+    if(!_infoEnabled) return;
+    trace.apply(console, arguments);
+}
 
 function traceJSON(o) {
     trace(JSON.stringify(o, null, '  '));
@@ -66,7 +73,7 @@ function resolveHandleBars(str:string, obj:any):string {
 }
 
 function reduceExistingDirectories(arr:Array<string>):Array<string> {
-    var TAG_CHECK_EXISTS = "@EXISTS@";
+    var TAG_CHECK_EXISTS = "@@";
 
     for(var r=arr.length; --r>=0;) {
         var resolved = arr[r];
@@ -101,7 +108,7 @@ function copyFile(from:string, to:string) {
 }
 
 module.exports.multiout = {
-    isDebug: false,
+    isDebug: debugParam && _infoEnabled,
     populateSeperateOutputs: function(pattern:RegExp, ext:string, folders:any={}, includesInAll:Array<string>=[]):any {
         if(ext.indexOf('.')!=0) ext = "." + ext;
         var outputExt;
@@ -121,7 +128,7 @@ module.exports.multiout = {
             if(!pattern.test(fullpath)) return;
 
             var foldername = fullpath.split("/")[0];
-            var mergedname = foldername + outputExt;
+            var mergedname = endsWith(outputExt.substr(1), "/") + foldername + outputExt;
             if(folders[mergedname]==null) {
                 folders[mergedname] = includesInAll.concat();
             }
@@ -141,21 +148,21 @@ module.exports.multiout = {
         var _THIS = this;
 
         if(currentTasks==null) {
-            _THIS.isDebug && trace("Missing 'tasks' in multiout's '" + currentName + "' section.");
+            info("  Missing 'tasks' in multiout's '" + currentName + "' section.");
             return;
         }
 
         if(currentFiles==null) {
-            _THIS.isDebug && trace("Missing 'files' in multiout configuration file.");
+            info("  Missing 'files' in multiout configuration file.");
             return;
         }
 
         if(currentConfig.inputFile!=null) {
             if(!fileExists(currentConfig.inputFile)) {
-                trace("'inputFile' missing / incorrect path: " + currentConfig.inputFile);
+                info("'inputFile' missing / incorrect path: " + currentConfig.inputFile);
                 return;
             } else {
-                _THIS.isDebug && trace("Reading file: " + currentConfig.inputFile);
+                info("Reading file: " + currentConfig.inputFile);
                 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 this._inputFileContent = readFile(currentConfig.inputFile);
             }
@@ -164,10 +171,12 @@ module.exports.multiout = {
         if(currentConfig.outputDir!=null) {
             this._outputDir = endsWith(currentConfig.outputDir, "/");
             if(!fileExists(this._outputDir)) {
-                trace("'outputDir' does not exist yet - creating it now: " + this._outputDir);
+                info("  'outputDir' does not exist yet - creating it now: " + this._outputDir);
                 fs.mkdirSync(this._outputDir);
             }
         }
+
+        info("[PROCESSING = %s]", currentName.toUpperCase());
 
         currentFiles.forEach( function(adUnit) {
             if(adUnit.name.indexOf("*")==0) {
@@ -176,15 +185,18 @@ module.exports.multiout = {
             }
 
             if(!fileExists("app/" + adUnit.name)) {
-                _THIS.isDebug && trace("Missing ad folder, skipping: " + adUnit.name);
+                info("  Skipping missing folder: " + adUnit.name);
                 return;
             }
 
             currentTasks.forEach( function(task) {
                 if(task.name==null || task.name.length==0) return;
-
                 var resolvedArgs = resolveHandleBars(task.args, adUnit).split(" ");
                 reduceExistingDirectories(resolvedArgs);
+
+                if(_THIS.isDebug){
+                    info("  [TASK] %s %s", task.name, resolvedArgs.join("\n  ... "));
+                }
 
                 if(builtinTasks[task.name]!=null) {
                     builtinTasks[task.name].call(_THIS, adUnit, resolvedArgs);
@@ -192,10 +204,10 @@ module.exports.multiout = {
                     var cmd = spawn(task.name, resolvedArgs, UTF_8);
                     if(task.silent===true) return;
                     if(cmd.stderr && cmd.stderr.length>0) {
-                        _THIS.isDebug && trace("ERROR: " + task.name + " failed: \n" + cmd.stderr);
+                        info("ERROR: " + task.name + " failed: \n" + cmd.stderr);
                         return;
                     } else {
-                        trace(cmd.stdout);
+                        info(cmd.stdout);
                     }
                 }
             });
@@ -205,21 +217,19 @@ module.exports.multiout = {
             if(_THIS._indexDefault==null) {
                 _THIS._indexDefault = _THIS._lastHTMLFile;
                 if(_THIS._indexDefault==null) { //Still no file written...
-                    _THIS.isDebug && trace("Default index file could not be written! :(");
+                    info("Default index file could not be written! :(");
                     return;
                 }
             }
 
             var indexHTML = _THIS._outputDir + "index.html";
-            trace("Copying " + _THIS._indexDefault + " to index.html");
+            info("Copying " + _THIS._indexDefault + " to index.html");
             if(!fileExists(_THIS._indexDefault)) {
-                trace("The file doesn't exist to copy as index.html file! " + _THIS._indexDefault);
+                info("The file doesn't exist to copy as index.html file! " + _THIS._indexDefault);
                 return;
             }
             copyFile(_THIS._indexDefault, indexHTML);
         }
-
-        //traceJSON(currentTasks)
     }
 };
 
@@ -232,7 +242,7 @@ var builtinTasks = {
         var _THIS = this;
 
         if(configArgs==null || configArgs.length!=1) {
-            trace("ERROR: incorrect 'args' passed to built-in task 'merge-and-paste': " + configArgs)
+            info("ERROR: incorrect 'args' passed to built-in task 'merge-and-paste': " + configArgs)
             return;
         }
 
@@ -273,11 +283,10 @@ var builtinTasks = {
                     } else if(fileExists(result.altFilename)) {
                         result.data = readFile(result.altFilename, adUnit);
                     } else {
-                        trace("'merge-and-paste' > SRC=/HREF= not found: " + result.filename + " || " + result.altFilename);
+                        info("'merge-and-paste' > SRC=/HREF= not found: " + result.filename + " || " + result.altFilename);
                         continue;
                     }
 
-                    //trace(result.filename +" > " + result.data.length);
                     break;
                 }
             }
@@ -296,7 +305,7 @@ var builtinTasks = {
 
             if(buffers[o.name]==null) { buffers[o.name] = []; }
 
-            _THIS.isDebug && trace("Writing to the buffer: " + o.name + " -> " + o.data.length + " chars...");
+            info("  Writing to the buffer: " + o.name + "\t-> " + o.data.length + " chars ...");
             buffers[o.name].push( o.data );
         }
 
@@ -305,7 +314,7 @@ var builtinTasks = {
             if(o==null || o.name==null) continue;
             var buffer = buffers[o.name];
             if(buffer==null) {
-                trace("Buffer is empty: " + o.name);
+                info("  Buffer is empty: " + o.name);
                 continue;
             }
 
@@ -314,12 +323,10 @@ var builtinTasks = {
 
         var output = mergedLines.join("\n");
 
-        //trace(output);
         fs.writeFileSync(htmlOut, output, UTF_8);
-        trace("Writing HTML file: " + htmlOut);
+        info("  -- Writing HTML file: " + htmlOut);
 
         _THIS._lastHTMLFile = htmlOut;
-        //_THIS.isDebug &&
 
     }
 };
