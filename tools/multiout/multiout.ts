@@ -368,6 +368,12 @@ var builtinTasks = {
             return str;
         }
 
+        /**
+         * TODO: Does the ARGS really need to be a string?
+         *      Couldn't it sometimes be a raw Object that could be
+         *      accessed by its fields?
+         */
+
         if(configArgs.length>=2) {
             var extraParams = JSON.parse(configArgs[1]);
             if(extraParams.replace) {
