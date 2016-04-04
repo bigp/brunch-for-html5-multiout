@@ -1,18 +1,12 @@
 var trace = console.log.bind(console);
 var isProduction = process.argv.indexOf("-p")>-1 ? 1 : 0;
-var jsFiles = {'js/vendor.js': /^vendor\/[a-zA-Z0-9_\-\/]*\.js/};
-var cssFiles = {'css/vendor.css': /^vendor\/[a-zA-Z0-9_\-\/]*\.(css|less)/};
-
 var multiout = require("./tools/multiout/multiout.js").multiout;
-multiout.isDebug = isProduction==0;
-multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".js", jsFiles, ['app/initialize.js']);
-multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".css", cssFiles, ['app/reset.css']);
-multiout.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".less:.css", cssFiles);
+multiout.populateTypicalAdFormats(isProduction==0);
 
 if(multiout.isDebug) {
-  trace("jsFiles: " + JSON.stringify(jsFiles, null, ' '));
+  trace("jsFiles: " + JSON.stringify(multiout.jsFiles, null, '  '));
   trace("----");
-  trace("cssFiles: " + JSON.stringify(cssFiles, null, ' '));
+  trace("cssFiles: " + JSON.stringify(multiout.cssFiles, null, '  '));
 }
 
 module.exports = {
@@ -32,16 +26,13 @@ module.exports = {
       sequences: true,
       properties: true,
       conditionals: true,
-      compress: {
-        global_defs: { DEBUG: false },
-        hoist_vars: true
-      }
+      compress: { global_defs: { DEBUG: false }, hoist_vars: true }
     }
   },
 
   files: {
-    javascripts: { joinTo: jsFiles },
-    stylesheets: { joinTo: cssFiles, order: { before: ['vendor/common/reset.css'] }},
+    javascripts: { joinTo: multiout.jsFiles },
+    stylesheets: { joinTo: multiout.cssFiles, order: { before: ['vendor/common/reset.css'] }},
     templates: { joinTo: 'app.js' }
   }
 };

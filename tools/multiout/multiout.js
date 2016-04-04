@@ -1,6 +1,6 @@
-var trace = console.log.bind(console);
 var fs = require('fs');
 var spawn = require('child_process').spawnSync;
+var trace = console.log.bind(console);
 var UTF_8 = { encoding: "utf-8" };
 var cmdParam = process.argv[2];
 var debugParam = process.argv[3] == "0";
@@ -23,8 +23,9 @@ function endsWith(path, char) {
         return path + char;
     return path;
 }
-function recursiveGetFiles(path, allFiles) {
+function recursiveGetFiles(path, allFiles, exceptions) {
     if (allFiles === void 0) { allFiles = []; }
+    if (exceptions === void 0) { exceptions = []; }
     path = endsWith(path, "/");
     var files = fs.readdirSync(path);
     files.forEach(function (file) {
@@ -43,8 +44,6 @@ function recursiveGetFiles(path, allFiles) {
     });
     return allFiles;
 }
-var root = "./app/";
-var allFiles = recursiveGetFiles(root);
 function fileExists(path) {
     try {
         fs.statSync(path);
@@ -55,6 +54,8 @@ function fileExists(path) {
         return false;
     }
 }
+var root = "./app/";
+var allFiles = recursiveGetFiles(root);
 function resolveHandleBars(str, obj) {
     if (str == null)
         return null;
@@ -109,9 +110,18 @@ function copyFile(from, to) {
 }
 module.exports.multiout = {
     isDebug: debugParam && _infoEnabled,
-    populateSeperateOutputs: function (pattern, ext, folders, includesInAll) {
+    populateTypicalAdFormats: function (debugFlag) {
+        var jsFiles = { 'js/vendor.js': /^vendor\/[a-zA-Z0-9_\-\/]*\.js/ };
+        var cssFiles = { 'css/vendor.css': /^vendor\/[a-zA-Z0-9_\-\/]*\.(css|less)/ };
+        this.isDebug = debugFlag;
+        this.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".js", jsFiles);
+        this.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".css", cssFiles);
+        this.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".less:.css", cssFiles);
+        this.jsFiles = jsFiles;
+        this.cssFiles = cssFiles;
+    },
+    populateSeperateOutputs: function (pattern, ext, folders) {
         if (folders === void 0) { folders = {}; }
-        if (includesInAll === void 0) { includesInAll = []; }
         if (ext.indexOf('.') != 0)
             ext = "." + ext;
         var outputExt;
@@ -123,23 +133,18 @@ module.exports.multiout = {
         else {
             outputExt = ext;
         }
-        //Filter files by pattern:
+        //Filter files by pattern (EDIT: this only detects /app/ subfolders with ad-like patterns.
         allFiles.forEach(function (fullpath) {
             var completePath = fullpath;
             if (fullpath.indexOf(root) == 0)
                 fullpath = fullpath.substr(root.length);
-            if (!pattern.test(fullpath))
+            if (!pattern.test(fullpath) || fullpath.indexOf("/") > -1)
                 return;
-            var foldername = fullpath.split("/")[0];
-            var mergedname = endsWith(outputExt.substr(1), "/") + foldername + outputExt;
-            if (folders[mergedname] == null) {
-                folders[mergedname] = includesInAll.concat();
-            }
-            if (fs.lstatSync(completePath).isDirectory())
-                return;
-            if (fullpath.indexOf(ext) != (fullpath.length - ext.length))
-                return;
-            folders[mergedname].push(removeBeginsWith(completePath, "./"));
+            var mergedname = endsWith(outputExt.substr(1), "/") + fullpath + outputExt;
+            var filesSrc = "^" + removeBeginsWith(completePath, "./") + "/.*" + ext;
+            var filesRegex = new RegExp(filesSrc, "gi");
+            //trace(mergedname + " -- " + filesSrc + " -- " + filesRegex.source);
+            folders[mergedname] = filesRegex;
         });
         return folders;
     },
