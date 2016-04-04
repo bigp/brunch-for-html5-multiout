@@ -34,7 +34,8 @@ Simple, prefix it with an "*" in the filenames, see for example:
 
 	var config = {
 		files: [
-			{name: "en_160x600_h1", width: 160, height: 600, borderWidth: 158, borderHeight: 598},
+			// Note ↓ the asterisk marks which file will overwrite "index.html" to preview & live-update
+			{name: "*en_160x600_h1", width: 160, height: 600, borderWidth: 158, borderHeight: 598},
 			{name: "en_160x600_h2", width: 160, height: 600, borderWidth: 158, borderHeight: 598},
 			{name: "en_300x250_h1", width: 300, height: 250, borderWidth: 298, borderHeight: 248},
 			{name: "en_300x250_h2", width: 300, height: 250, borderWidth: 298, borderHeight: 248},
