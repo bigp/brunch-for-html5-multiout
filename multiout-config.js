@@ -1,5 +1,6 @@
 var config = {
     files: [
+        // Note ↓ the asterisk marks which file will overwrite "index.html" to preview & live-update
         {name: "en_160x600_h1", width: 160, height: 600, borderWidth: 158, borderHeight: 598},
         {name: "en_160x600_h2", width: 160, height: 600, borderWidth: 158, borderHeight: 598},
         {name: "en_300x250_h1", width: 300, height: 250, borderWidth: 298, borderHeight: 248},
