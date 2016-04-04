@@ -72,6 +72,12 @@ function resolveHandleBars(str:string, obj:any):string {
     return str;
 }
 
+function resolveEnvVars(str:string):string {
+    return str.replace(/%([^%]+)%/g, function(_,n) {
+        return process.env[n];
+    });
+}
+
 function reduceExistingDirectories(arr:Array<string>):Array<string> {
     var TAG_CHECK_EXISTS = "@@";
 
@@ -177,11 +183,20 @@ module.exports.multiout = {
         }
 
         info("[PROCESSING = %s]", currentName.toUpperCase());
+        var isAFTER = currentName=="after";
 
         currentFiles.forEach( function(adUnit) {
-            if(adUnit.name.indexOf("*")==0) {
+            if (adUnit.name.indexOf("*") == 0) {
                 adUnit.name = removeBeginsWith(adUnit.name, "*");
-                _THIS._indexDefault = _THIS._outputDir + adUnit.name +".html";
+                _THIS._hasPrimaryFile = adUnit;
+                _THIS._indexDefault = _THIS._outputDir + adUnit.name + ".html";
+            }
+        });
+
+        currentFiles.forEach( function(adUnit) {
+            if(_THIS._hasPrimaryFile!=null) {
+                if(_THIS._hasPrimaryFile!=adUnit) return;
+                trace("Working on primary file: " + adUnit.name);
             }
 
             if(!fileExists("app/" + adUnit.name)) {
@@ -189,31 +204,42 @@ module.exports.multiout = {
                 return;
             }
 
+            /*if(isAFTER) {
+                _THIS._currentInput = resolveHandleBars(_THIS._inputFileContent, adUnit);
+            }*/
+
             currentTasks.forEach( function(task) {
-                if(task.name==null || task.name.length==0) return;
+                if(task.name==null || task.name.length==0 || task.off===true) return;
                 var resolvedArgs = resolveHandleBars(task.args, adUnit).split(" ");
                 reduceExistingDirectories(resolvedArgs);
 
-                if(_THIS.isDebug){
-                    info("  [TASK] %s %s", task.name, resolvedArgs.join("\n  ... "));
+                var taskExec = resolveEnvVars(task.name);
+                if(!task.silent){
+                    trace("  [TASK] %s %s", taskExec, resolvedArgs.join("\n  ... "));
                 }
 
                 if(builtinTasks[task.name]!=null) {
                     builtinTasks[task.name].call(_THIS, adUnit, resolvedArgs);
                 } else {
-                    var cmd = spawn(task.name, resolvedArgs, UTF_8);
+                    var cmd = spawn(taskExec, resolvedArgs, UTF_8);
                     if(task.silent===true) return;
                     if(cmd.stderr && cmd.stderr.length>0) {
-                        info("ERROR: " + task.name + " failed: \n" + cmd.stderr);
+                        trace("ERROR: " + task.name + " failed: \n" + cmd.stderr);
                         return;
                     } else {
-                        info(cmd.stdout);
+                        trace(cmd.stdout);
                     }
                 }
             });
+
+            /*if(isAFTER) {
+                //var htmlOut = _THIS._outputDir + removeBeginsWith( resolveHandleBars( configArgs[0], adUnit ), "./" );
+
+                _THIS._currentInput = resolveHandleBars(_THIS._inputFileContent, adUnit);
+            }*/
         });
 
-        if(currentName=="after") {
+        if(isAFTER) {
             if(_THIS._indexDefault==null) {
                 _THIS._indexDefault = _THIS._lastHTMLFile;
                 if(_THIS._indexDefault==null) { //Still no file written...
@@ -241,7 +267,7 @@ var builtinTasks = {
     'merge-and-paste': function mergeAndPaste(adUnit, configArgs) {
         var _THIS = this;
 
-        if(configArgs==null || configArgs.length!=1) {
+        if(configArgs==null) {
             info("ERROR: incorrect 'args' passed to built-in task 'merge-and-paste': " + configArgs)
             return;
         }
@@ -322,6 +348,25 @@ var builtinTasks = {
         }
 
         var output = mergedLines.join("\n");
+
+        function escapedForRegex(str) {
+            str = str.replace(/\./g, "\\.");
+            str = str.replace(/\-/g, "\\-");
+            return str;
+        }
+
+        if(configArgs.length>=2) {
+            var extraParams = JSON.parse(configArgs[1]);
+            if(extraParams.replace) {
+                var reps = extraParams.replace;
+                for(var r=0; r<reps.length; r+=2) {
+                    var a = escapedForRegex(reps[r]);
+                    var b = reps[r+1];
+
+                    output = output.replace(new RegExp(a, "g"), b);
+                }
+            }
+        }
 
         fs.writeFileSync(htmlOut, output, UTF_8);
         info("  -- Writing HTML file: " + htmlOut);

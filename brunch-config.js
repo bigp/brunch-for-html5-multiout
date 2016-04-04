@@ -25,7 +25,7 @@ module.exports = {
     beforeBrunch: ["node multiout-config.js before " + isProduction],
     afterBrunch: ["node multiout-config.js after " + isProduction],
     less: { enabled: true },
-    autoReload: { enabled: true, delay: 300 },
+    autoReload: { enabled: true }, //delay: 300
     uglify: {
       mangle: true,
       dead_code: true,
