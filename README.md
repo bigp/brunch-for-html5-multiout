@@ -1,3 +1,7 @@
+# **Dependencies**
+
+If you wish to build texture-atlases with TexturePacker (as demonstrated in this configuration), you will need a licensed copy of it. (may also need a custom LESSCSS exporter-format for the CSS classes to be used properly).
+
 # Brunch app
 
 This is HTML5 application, built with [Brunch](http://brunch.io).
