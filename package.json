@@ -12,6 +12,7 @@
     "build": "brunch build --production"
   },
   "dependencies": {
+    "brunch-typescript": "^1.8.3",
     "fs-extra": "^0.26.5"
   },
   "devDependencies": {
