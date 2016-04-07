@@ -3,7 +3,7 @@ var isProduction = process.argv.indexOf("-p")>-1 ? 1 : 0;
 var multiout = require("./tools/multiout/multiout.js").multiout;
 multiout.populateTypicalAdFormats(isProduction==0);
 
-if(multiout.isDebug) {
+if(false) { //multiout.isDebug) {
   trace("jsFiles: " + JSON.stringify(multiout.jsFiles, null, '  '));
   trace("----");
   trace("cssFiles: " + JSON.stringify(multiout.cssFiles, null, '  '));

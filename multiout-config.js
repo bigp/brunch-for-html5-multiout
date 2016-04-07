@@ -14,8 +14,8 @@ var config = {
 
     before: {
         tasks: [
-            {name: 'texturepacker', silent: true, args: "--force-publish --data app/{{name}}/{{name}}.less --sheet public/{{name}}.png @@app/{{name}}/images @@app/images_{{width}}x{{height}} @@app/images_common app/atlas_common.tps"},
-            {name: '%PNGQUANT%/pngquant.exe', off:true, silent: true, args: "--force --verbose --quality=45-85 --output public/{{name}}-fs8.png -- public/{{name}}.png"}
+            {name: 'texturepacker', silent: false, args: "--force-publish --data app/{{name}}/{{name}}.less --sheet public/{{name}}.png @@app/{{name}}/images @@app/images_{{width}}x{{height}} @@app/images_common app/atlas_common.tps"},
+            {name: '%PNGQUANT%/pngquant.exe', off:false, silent: false, args: "--force --verbose --quality=45-85 --output public/{{name}}-fs8.png -- public/{{name}}.png"}
         ]
     },
 

@@ -165,6 +165,7 @@ module.exports.multiout = {
         var currentTasks = currentConfig.tasks;
         var currentFiles = config.files;
         var _THIS = this;
+        trace("Processing phase " + currentName);
 
         if(currentTasks==null) {
             info("  Missing 'tasks' in multiout's '" + currentName + "' section.");
@@ -220,21 +221,21 @@ module.exports.multiout = {
             /*if(isAFTER) {
                 _THIS._currentInput = resolveHandleBars(_THIS._inputFileContent, adUnit);
             }*/
-
+            //trace(currentTasks);
             currentTasks.forEach( function(task) {
                 if(task.name==null || task.name.length==0 || task.off===true) return;
                 var resolvedArgs = resolveHandleBars(task.args, adUnit).split(" ");
                 reduceExistingDirectories(resolvedArgs);
 
                 var taskExec = resolveEnvVars(task.name);
-                if(!task.silent){
-                    trace("  [TASK] %s %s", taskExec, resolvedArgs.join("\n  ... "));
-                }
+
+                info("  [TASK] %s %s", taskExec, "\n  ... " + resolvedArgs.join("\n  ... "));
 
                 if(builtinTasks[task.name]!=null) {
                     builtinTasks[task.name].call(_THIS, adUnit, resolvedArgs);
                 } else {
                     var cmd = spawn(taskExec, resolvedArgs, UTF_8);
+                    trace(taskExec);
                     if(task.silent===true) return;
                     if(cmd.stderr && cmd.stderr.length>0) {
                         trace("ERROR: " + task.name + " failed: \n" + cmd.stderr);
