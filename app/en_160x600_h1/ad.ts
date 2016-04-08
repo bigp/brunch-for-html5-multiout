@@ -19,6 +19,7 @@ class Ad {
     }
 
     play(t) {
+        alert("TEST ME!");
         //FRAME 1
         show([sprites.background]);
         fadeIn(0.5, sprites.logo);

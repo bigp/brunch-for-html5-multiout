@@ -4,6 +4,12 @@ var trace = console.log.bind(console);
 var UTF_8 = { encoding: "utf-8" };
 var cmdParam = process.argv[2];
 var debugParam = process.argv[3] == "0";
+function clear() {
+    console.log('\033[2J');
+}
+RegExp.prototype.toJSON = function () {
+    return this.source;
+};
 var _infoEnabled = false;
 function info() {
     var args = [];
@@ -109,19 +115,39 @@ function copyFile(from, to) {
     fs.createReadStream(from).pipe(fs.createWriteStream(to));
 }
 module.exports.multiout = {
+    cmdParam: cmdParam == "before" || cmdParam == "after" ? cmdParam : null,
     isDebug: debugParam && _infoEnabled,
+    config: null,
+    hasPrimaryFile: function (config) {
+        var found = null;
+        config.files.forEach(function (fileObj) {
+            if (fileObj.name.charAt(0) == "*") {
+                found = fileObj;
+            }
+        });
+        return found;
+    },
     populateTypicalAdFormats: function (debugFlag) {
         var jsFiles = { 'js/vendor.js': /^vendor\/[a-zA-Z0-9_\-\/]*\.js/ };
         var cssFiles = { 'css/vendor.css': /^vendor\/[a-zA-Z0-9_\-\/]*\.(css|less)/ };
+        var commonPattern = /^(en|fr)[0-9a-z_\-]*/i;
         this.isDebug = debugFlag;
-        this.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".js", jsFiles);
-        this.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".css", cssFiles);
-        this.populateSeperateOutputs(/^en[0-9a-z_\-]*/, ".less:.css", cssFiles);
+        if (this.config != null) {
+            var primaryFile = this.hasPrimaryFile(this.config);
+            if (primaryFile) {
+                var filename = primaryFile.name.substr(1);
+                trace("Got a primary file: \"%s\"", filename);
+                commonPattern = new RegExp("^" + filename);
+            }
+        }
+        this.populateSeperateOutputs(commonPattern, ".js", jsFiles);
+        //this.populateSeperateOutputs(commonPattern, ".css", cssFiles);
+        this.populateSeperateOutputs(commonPattern, ".(css|less):.css", cssFiles);
         this.jsFiles = jsFiles;
         this.cssFiles = cssFiles;
     },
-    populateSeperateOutputs: function (pattern, ext, folders) {
-        if (folders === void 0) { folders = {}; }
+    populateSeperateOutputs: function (pattern, ext, files) {
+        if (files === void 0) { files = {}; }
         if (ext.indexOf('.') != 0)
             ext = "." + ext;
         var outputExt;
@@ -141,12 +167,12 @@ module.exports.multiout = {
             if (!pattern.test(fullpath) || fullpath.indexOf("/") > -1)
                 return;
             var mergedname = endsWith(outputExt.substr(1), "/") + fullpath + outputExt;
-            var filesSrc = "^" + removeBeginsWith(completePath, "./") + "/.*" + ext;
+            var filesSrc = "^" + removeBeginsWith(completePath, "./") + "/.*\\" + ext;
             var filesRegex = new RegExp(filesSrc, "gi");
             //trace(mergedname + " -- " + filesSrc + " -- " + filesRegex.source);
-            folders[mergedname] = filesRegex;
+            files[mergedname] = filesRegex;
         });
-        return folders;
+        return files;
     },
     process: function (config) {
         var currentName = cmdParam.toLowerCase();
@@ -154,7 +180,6 @@ module.exports.multiout = {
         var currentTasks = currentConfig.tasks;
         var currentFiles = config.files;
         var _THIS = this;
-        trace("Processing phase " + currentName);
         if (currentTasks == null) {
             info("  Missing 'tasks' in multiout's '" + currentName + "' section.");
             return;
@@ -183,6 +208,8 @@ module.exports.multiout = {
         }
         info("[PROCESSING = %s]", currentName.toUpperCase());
         var isAFTER = currentName == "after";
+        //Detect for primary file:
+        _THIS._hasPrimaryFile = null;
         currentFiles.forEach(function (adUnit) {
             if (adUnit.name.indexOf("*") == 0) {
                 adUnit.name = removeBeginsWith(adUnit.name, "*");
@@ -216,7 +243,6 @@ module.exports.multiout = {
                 }
                 else {
                     var cmd = spawn(taskExec, resolvedArgs, UTF_8);
-                    trace(taskExec);
                     if (task.silent === true)
                         return;
                     if (cmd.stderr && cmd.stderr.length > 0) {

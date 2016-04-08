@@ -1,11 +1,11 @@
 var trace = console.log.bind(console);
 var isProduction = process.argv.indexOf("-p")>-1 ? 1 : 0;
-var multiout = require("./tools/multiout/multiout.js").multiout;
+var multiout = require("./multiout-config.js").multiout;
 multiout.populateTypicalAdFormats(isProduction==0);
 
-if(false) { //multiout.isDebug) {
+if(true) { //multiout.isDebug) {
   trace("jsFiles: " + JSON.stringify(multiout.jsFiles, null, '  '));
-  trace("----");
+  trace("==========");
   trace("cssFiles: " + JSON.stringify(multiout.cssFiles, null, '  '));
 }
 
@@ -18,7 +18,7 @@ module.exports = {
   plugins: {
     beforeBrunch: ["node multiout-config.js before " + isProduction],
     afterBrunch: ["node multiout-config.js after " + isProduction],
-    less: { enabled: true },
+    less: { enabled: true, modules: false },
     autoReload: { enabled: true }, //delay: 300
     uglify: {
       mangle: true,

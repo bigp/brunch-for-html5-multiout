@@ -14,6 +14,7 @@ var Ad = (function () {
         sprites.cta = makeSprite("cta");
     }
     Ad.prototype.play = function (t) {
+        alert("TEST ME!");
         //FRAME 1
         show([sprites.background]);
         fadeIn(0.5, sprites.logo);
